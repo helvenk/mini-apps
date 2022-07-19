@@ -15,7 +15,7 @@ declare global {
   namespace NodeJS {
     interface ProcessEnv {
       MONGODB_URI: string;
-      MONGODB_DB: string;
+      MONGODB_DB?: string;
     }
   }
 }
@@ -26,8 +26,9 @@ function toJSON(data: IRecord) {
 
 export async function getDatabase() {
   if (!global.database) {
-    const mongo = await connect(process.env.MONGODB_URI, {
-      dbName: process.env.MONGODB_DB,
+    const { MONGODB_URI, MONGODB_DB } = process.env;
+    const mongo = await connect(MONGODB_URI, {
+      dbName: MONGODB_DB ?? 'attendance',
     });
 
     const record = new Schema<IRecord>(
