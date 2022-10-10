@@ -40,3 +40,6 @@ Thumbs.db
 
 # en
 *.env
+
+# deploy
+.vercel

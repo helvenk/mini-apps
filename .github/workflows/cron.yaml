@@ -1,0 +1,13 @@
+name: covid19
+on:
+  schedule:
+    - cron: '0 0/2 * * *'
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch latest covid data
+        run: |
+          curl --request POST \
+          --url '${{ secrets.CRON_URL }}/api/cron' \
+          --header 'Authorization: Bearer ${{ secrets.CRON_KEY }}'

@@ -7,14 +7,16 @@
     "build": "nx build",
     "test": "nx test",
     "nx": "nx",
-    "g:next":"nx g @nrwl/next:app --e2eTestRunner=none"
+    "g:next": "nx g @nrwl/next:app --e2eTestRunner=none"
   },
   "private": true,
   "dependencies": {
     "@nrwl/next": "14.4.3",
     "axios": "^0.27.2",
+    "cheerio": "^1.0.0-rc.12",
     "core-js": "^3.6.5",
     "dayjs": "^1.11.3",
+    "exceljs": "^4.3.0",
     "lodash": "^4.17.21",
     "mongoose": "^6.4.5",
     "next": "12.1.6",

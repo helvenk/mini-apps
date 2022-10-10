@@ -6,7 +6,8 @@ function CustomApp({ Component, pageProps }: AppProps) {
   return (
     <>
       <Head>
-        <title>Welcome to covid19!</title>
+        <title>疫情数据</title>
+        <link rel="shortcut icon" type="image/x-icon" href="/logo.png" />
       </Head>
       <main className="app">
         <Component {...pageProps} />
