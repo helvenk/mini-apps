@@ -93,7 +93,7 @@ export default function Index({
   );
 }
 
-function renderTable({high,middle}: ReturnType<typeof parseRows>) {
+function renderTable({ high, middle }: ReturnType<typeof parseRows>) {
   const rows = mergeRows({ high, middle });
 
   const renderCell = ({

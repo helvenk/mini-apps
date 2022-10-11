@@ -2,13 +2,9 @@
 /* eslint-disable no-var */
 /* eslint-disable @typescript-eslint/no-namespace */
 import mongoose, { Schema, connect, Model } from 'mongoose';
-import {
-  first,
-  isFunction,
-  groupBy,
-  differenceBy,
-} from 'lodash';
+import { first, isFunction, groupBy, differenceBy, uniqWith } from 'lodash';
 import axios from 'axios';
+import dayjs from 'dayjs';
 import { Area, Covid } from '../types';
 
 const DEFAULT_COVID_SIZE = 10;
@@ -147,13 +143,13 @@ async function fetchData() {
 
   const high = parseAreas('高风险');
   const middle = parseAreas('中风险');
-  const time = nodeMap['双击']
+  const time = response.data
     ?.find((o) => o.id === 'tm')
     ?.name.replace('数据时间：', '');
 
   return {
     create: Date.now(),
-    since: new Date(time).getTime(),
+    since: dayjs(time, 'YYYY-MM-DD HH:mm:ss').toDate().getTime(),
     high,
     middle,
     low: [],
@@ -204,5 +200,7 @@ export async function getLatestData(size: number = DEFAULT_COVID_SIZE) {
     results = [latestData, ...results];
   }
 
-  return toJSON<Covid[]>(results.slice(0, size));
+  const data = uniqWith(results.slice(0, size), isEqualData);
+
+  return toJSON<Covid[]>(data);
 }
