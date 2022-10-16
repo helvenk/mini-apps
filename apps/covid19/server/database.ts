@@ -2,15 +2,18 @@
 /* eslint-disable no-var */
 /* eslint-disable @typescript-eslint/no-namespace */
 import mongoose, { Schema, connect, Model } from 'mongoose';
-import { first, isFunction, groupBy, differenceBy, uniqWith } from 'lodash';
+import { first, groupBy, differenceBy, uniqWith } from 'lodash';
 import axios from 'axios';
 import dayjs from 'dayjs';
-import { Area, Covid } from '../types';
+import { Area, Covid, RawCovid } from '../types';
+import { compress, decompress } from '../utils';
 
 const DEFAULT_COVID_SIZE = 10;
+// 数据 3天过期
+const DEFAULT_DAY_EXPIRE = 3;
 
 export type Database = {
-  Record: Model<Covid>;
+  Record: Model<RawCovid>;
 };
 
 declare global {
@@ -25,37 +28,21 @@ declare global {
   }
 }
 
-function toJSON<T>(data: any): T {
-  const transform = (data: any) => {
-    const next = isFunction(data.toJSON) ? data.toJSON() : data;
-    return { ...next, _id: data._id.toString() };
-  };
-
-  return Array.isArray(data) ? data.map(transform) : transform(data);
-}
-
 export async function getDatabase() {
   if (!global.database) {
     const { MONGODB_URI, MONGODB_DB } = process.env;
+    console.log('[%s] Connect mongodb...', new Date());
     const mongo = await connect(MONGODB_URI, {
       dbName: MONGODB_DB ?? 'covid',
     });
+    console.log('[%s] Connected', new Date());
 
-    const AreaSchema = new Schema<Area>(
+    const CovidSchema = new Schema<RawCovid>(
       {
-        province: { type: String },
-        city: { type: String },
-        region: { type: String },
-        address: { type: String },
-      },
-      { _id: false }
-    );
-
-    const CovidSchema = new Schema<Covid>(
-      {
-        high: { type: [AreaSchema] },
-        middle: { type: [AreaSchema] },
-        low: { type: [AreaSchema] },
+        high: { type: [Array] },
+        middle: { type: [Array] },
+        low: { type: [Array] },
+        dict: { type: [String] },
         create: { type: Number, index: true, unique: true },
         since: { type: Number },
       },
@@ -82,7 +69,9 @@ async function fetchData() {
 
   const url =
     'https://a68962b2-18d0-4812-854e-b4179d81a71f.bspapp.com/http/fengxian';
+  console.log('[%s] Fetch covid data...', new Date());
   const response = await axios.request<Node[]>({ url });
+  console.log('[%s] Fetch success', new Date());
   const nodeMap = groupBy(response.data, 'pId');
   const specialProvinces = ['北京市', '天津市', '上海市', '重庆市'];
 
@@ -158,15 +147,23 @@ async function fetchData() {
 
 async function getData(size: number) {
   const db = await getDatabase();
+  console.log('[%s] Query records from db...', new Date());
   const results = await db.Record.find()
     .sort({ create: 'desc' })
     .limit(size)
     .lean()
     .exec();
-  return results as Covid[];
+  console.log('[%s] Query success', new Date());
+  return results.map((o) => decompress(o as any));
 }
 
-function isEqualData(source?: Covid, target?: Covid) {
+async function saveData(data: Covid) {
+  const db = await getDatabase();
+  await db.Record.create(compress(data));
+  return data;
+}
+
+export function isEqualCovidData(source?: Covid, target?: Covid) {
   if (!source || !target) {
     return false;
   }
@@ -190,17 +187,42 @@ function isEqualData(source?: Covid, target?: Covid) {
   );
 }
 
+function isEqualCovid(source?: RawCovid | Covid, target?: RawCovid | Covid) {
+  if (!source || !target) {
+    return false;
+  }
+
+  return source.since === target.since;
+}
+
 export async function getLatestData(size: number = DEFAULT_COVID_SIZE) {
-  const db = await getDatabase();
+  console.log('[%s] Get latest data...', new Date());
   // eslint-disable-next-line prefer-const
   let [results, latestData] = await Promise.all([getData(size), fetchData()]);
 
-  if (!isEqualData(first(results), latestData)) {
-    latestData = await db.Record.create(latestData);
+  if (!isEqualCovid(first(results), latestData)) {
+    console.log('[%s] Found new data...', new Date());
+    await saveData(latestData);
     results = [latestData, ...results];
   }
 
-  const data = uniqWith(results.slice(0, size), isEqualData);
+  return uniqWith(results.slice(0, size), isEqualCovid);
+}
 
-  return toJSON<Covid[]>(data);
+export async function refreshData() {
+  console.log('[%s] Refresh data...', new Date());
+  const [results, latestData] = await Promise.all([getData(1), fetchData()]);
+
+  if (!isEqualCovid(first(results), latestData)) {
+    console.log('[%s] Found new data...', new Date());
+    await saveData(latestData);
+  }
+
+  const expires = dayjs()
+    .startOf('d')
+    .subtract(DEFAULT_DAY_EXPIRE, 'd')
+    .toDate();
+  console.log('[%s] Delete expired data less than %s ...', new Date(), expires);
+  const db = await getDatabase();
+  await db.Record.deleteMany({ create: { $lt: expires.getTime() } });
 }

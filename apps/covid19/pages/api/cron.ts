@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getLatestData } from '../../server/database';
+import { refreshData } from '../../server/database';
 
 export default async function handler(
   req: NextApiRequest,
@@ -10,7 +10,7 @@ export default async function handler(
       const { authorization } = req.headers;
 
       if (authorization === `Bearer ${process.env.CRON_KEY}`) {
-        await getLatestData(1);
+        await refreshData();
         res.status(200).json({ success: true });
       } else {
         res.status(401).json({ success: false });

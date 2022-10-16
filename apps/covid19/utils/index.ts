@@ -1,7 +1,7 @@
 import { map, groupBy, differenceBy } from 'lodash';
 import { Workbook, Font, Alignment } from 'exceljs';
 import dayjs from 'dayjs';
-import { Covid, Area, Cell } from '../types';
+import { Covid, Area, Cell, RawArea, RawCovid } from '../types';
 
 export function getAddress(area: Area) {
   const { province, city, region, address } = area;
@@ -293,4 +293,68 @@ export async function downloadExcel(workbook: Workbook, name?: string) {
   const time = dayjs(workbook.created).format('M月D日');
   const filename = name ?? `${time}全国中高风险地区明细.xlsx`;
   downloadFile(new Blob([buffer]), filename);
+}
+
+export function compress({
+  high,
+  middle,
+  low,
+  create,
+  since,
+}: Covid): RawCovid {
+  const dict: Record<string | number, string | number> = {};
+  const rawDict: string[] = [];
+  let index = -1;
+
+  const addDict = (key: string) =>
+    dict[key] ??
+    ((index += 1),
+    (rawDict[index] = key),
+    (dict[key] = index),
+    (dict[index] = key),
+    index);
+
+  const compressAreas = (areas: Area[]) =>
+    areas.map(
+      ({ province, city, region, address }) =>
+        [
+          addDict(province),
+          addDict(city),
+          addDict(region),
+          addDict(address),
+        ] as RawArea
+    );
+
+  return {
+    create,
+    since,
+    high: compressAreas(high),
+    middle: compressAreas(middle),
+    low: compressAreas(low),
+    dict: rawDict,
+  };
+}
+
+export function decompress({
+  high,
+  middle,
+  low,
+  dict,
+  create,
+  since,
+}: RawCovid): Covid {
+  const restore = ([p, c, r, a]: RawArea): Area => ({
+    province: dict[p],
+    city: dict[c],
+    region: dict[r],
+    address: dict[a],
+  });
+
+  return {
+    create,
+    since,
+    high: high.map(restore),
+    middle: middle.map(restore),
+    low: low.map(restore),
+  };
 }

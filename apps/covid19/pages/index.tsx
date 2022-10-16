@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import dayjs from 'dayjs';
 import { groupBy, last, uniq } from 'lodash';
 import { getLatestData } from '../server/database';
-import { Area, Cell, Covid } from '../types';
+import { Area, Cell, Covid, RawCovid } from '../types';
 import {
   parseSummary,
   parseChanges,
@@ -11,22 +11,26 @@ import {
   downloadExcel,
   parseExcel,
   mergeRows,
+  compress,
+  decompress,
 } from '../utils';
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const data = await getLatestData();
   return {
-    props: { records: data.slice(1).reverse(), latest: data[0] },
+    props: { raw: data.map(compress) },
   };
 };
 
-export default function Index({
-  records,
-  latest,
-}: {
-  records: Covid[];
-  latest: Covid;
-}) {
+export default function Index({ raw }: { raw: RawCovid[] }) {
+  const { records, latest } = useMemo(() => {
+    const data = raw.map(decompress);
+    return {
+      records: data.slice(1).reverse(),
+      latest: data[0],
+    };
+  }, [raw]);
+
   const [selected, setSelected] = useState<Covid>(last(records) ?? latest);
   const [visible, setVisible] = useState(false);
 
