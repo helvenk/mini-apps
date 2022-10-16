@@ -159,7 +159,9 @@ async function getData(size: number) {
 
 async function saveData(data: Covid) {
   const db = await getDatabase();
-  await db.Record.create(compress(data));
+  await db.Record.findOneAndUpdate({ since: data.since }, compress(data), {
+    upsert: true,
+  });
   return data;
 }
 
