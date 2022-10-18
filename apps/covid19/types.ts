@@ -15,25 +15,24 @@ export type RawArea = [
 export type Cell = {
   level?: keyof Area;
   value: string;
-  render?:boolean;
+  render?: boolean;
   rowspan?: number;
   colspan?: number;
   fresh?: boolean;
 };
 
-export type Covid = {
-  high: Area[];
-  middle: Area[];
-  low: Area[];
-  create: number;
-  since: number;
-};
-
-export type RawCovid = {
-  high: RawArea[];
-  middle: RawArea[];
-  low: RawArea[];
+export type RawCovid<T = RawArea> = {
+  high: T[];
+  middle: T[];
+  low: T[];
   create: number;
   since: number;
   dict: string[];
+};
+
+export type Covid = RawCovid<Area>;
+
+export type RawCovids = {
+  dict: string[];
+  data: RawCovid[];
 };

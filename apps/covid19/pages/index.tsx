@@ -3,7 +3,7 @@ import { GetServerSideProps } from 'next';
 import dayjs from 'dayjs';
 import { groupBy, last, uniq } from 'lodash';
 import { getLatestData } from '../server/database';
-import { Area, Cell, Covid, RawCovid } from '../types';
+import { Area, Cell, Covid, RawCovids } from '../types';
 import {
   parseSummary,
   parseChanges,
@@ -11,21 +11,22 @@ import {
   downloadExcel,
   parseExcel,
   mergeRows,
-  compress,
-  decompress,
+  compressCovids,
+  decompressCovids,
 } from '../utils';
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const data = await getLatestData();
+  const raw = compressCovids(data);
   console.log('[%s] GetServerSideProps...', new Date());
   return {
-    props: { raw: data.map(compress) },
+    props: { raw },
   };
 };
 
-export default function Index({ raw }: { raw: RawCovid[] }) {
+export default function Index({ raw }: { raw: RawCovids }) {
   const { records, latest } = useMemo(() => {
-    const data = raw.map(decompress);
+    const data = decompressCovids(raw);
     return {
       records: data.slice(1).reverse(),
       latest: data[0],

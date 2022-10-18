@@ -1,7 +1,7 @@
 import { map, groupBy, differenceBy } from 'lodash';
 import { Workbook, Font, Alignment } from 'exceljs';
 import dayjs from 'dayjs';
-import { Covid, Area, Cell, RawArea, RawCovid } from '../types';
+import { Covid, Area, Cell, RawArea, RawCovid, RawCovids } from '../types';
 
 export function getAddress(area: Area) {
   const { province, city, region, address } = area;
@@ -295,13 +295,7 @@ export async function downloadExcel(workbook: Workbook, name?: string) {
   downloadFile(new Blob([buffer]), filename);
 }
 
-export function compress({
-  high,
-  middle,
-  low,
-  create,
-  since,
-}: Covid): RawCovid {
+export function compressCovids(data: Covid[]): RawCovids {
   const dict: Record<string | number, string | number> = {};
   const rawDict: string[] = [];
   let index = -1;
@@ -325,36 +319,51 @@ export function compress({
         ] as RawArea
     );
 
+  const compressCovid = ({ high, middle, low, since, create }: Covid) => {
+    return {
+      since,
+      create,
+      high: compressAreas(high),
+      middle: compressAreas(middle),
+      low: compressAreas(low),
+      dict: [],
+    } as RawCovid;
+  };
+
   return {
-    create,
-    since,
-    high: compressAreas(high),
-    middle: compressAreas(middle),
-    low: compressAreas(low),
+    data: data.map(compressCovid),
     dict: rawDict,
   };
 }
 
-export function decompress({
-  high,
-  middle,
-  low,
-  dict,
-  create,
-  since,
-}: RawCovid): Covid {
-  const restore = ([p, c, r, a]: RawArea): Area => ({
+export function compressCovid(data: Covid) {
+  const { data: rawCovids, dict } = compressCovids([data]);
+  return { ...rawCovids[0], dict } as RawCovid;
+}
+
+export function decompressCovids({ dict, data }: RawCovids): Covid[] {
+  const restoreArea = ([p, c, r, a]: RawArea): Area => ({
     province: dict[p],
     city: dict[c],
     region: dict[r],
     address: dict[a],
   });
 
-  return {
-    create,
-    since,
-    high: high.map(restore),
-    middle: middle.map(restore),
-    low: low.map(restore),
+  const restoreCovid = ({ since, create, high, middle, low }: RawCovid) => {
+    return {
+      since,
+      create,
+      high: high.map(restoreArea),
+      middle: middle.map(restoreArea),
+      low: low.map(restoreArea),
+      dict: [],
+    };
   };
+
+  return data.map(restoreCovid);
+}
+
+export function decompressCovid(rawCovid: RawCovid) {
+  const [covid] = decompressCovids({ data: [rawCovid], dict: rawCovid.dict });
+  return covid;
 }

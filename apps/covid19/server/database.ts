@@ -6,7 +6,7 @@ import { first, groupBy, differenceBy, uniqWith } from 'lodash';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { Area, Covid, RawCovid } from '../types';
-import { compress, decompress } from '../utils';
+import { compressCovid, decompressCovid } from '../utils';
 
 const DEFAULT_COVID_SIZE = 10;
 // 数据 3天过期
@@ -154,12 +154,12 @@ async function getData(size: number) {
     .lean()
     .exec();
   console.log('[%s] Query success', new Date());
-  return results.map((o) => decompress(o as any));
+  return results.map((o) => decompressCovid(o as any));
 }
 
 async function saveData(data: Covid) {
   const db = await getDatabase();
-  await db.Record.findOneAndUpdate({ since: data.since }, compress(data), {
+  await db.Record.findOneAndUpdate({ since: data.since }, compressCovid(data), {
     upsert: true,
   });
   return data;
@@ -202,13 +202,17 @@ export async function getLatestData(size: number = DEFAULT_COVID_SIZE) {
   // eslint-disable-next-line prefer-const
   let [results, latestData] = await Promise.all([getData(size), fetchData()]);
 
-  if (!isEqualCovid(first(results), latestData)) {
+  if (
+    // insert new data only prod
+    process.env.NODE_ENV.startsWith('prod') &&
+    !isEqualCovid(first(results), latestData)
+  ) {
     console.log('[%s] Found new data...', new Date());
     await saveData(latestData);
     results = [latestData, ...results];
   }
 
-  return uniqWith(results.slice(0, size), isEqualCovid);
+  return uniqWith(results.slice(0, size), isEqualCovid) as Covid[];
 }
 
 export async function refreshData() {
