@@ -17,6 +17,7 @@ import {
 
 export const getServerSideProps: GetServerSideProps = async () => {
   const data = await getLatestData();
+  console.log('[%s] GetServerSideProps...', new Date());
   return {
     props: { raw: data.map(compress) },
   };
