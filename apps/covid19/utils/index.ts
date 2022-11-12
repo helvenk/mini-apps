@@ -83,6 +83,7 @@ export function parseSummary(
     time,
     getLevelSummary(data.high, '高风险', changes?.high),
     getLevelSummary(data.middle, '中风险', changes?.middle),
+    getLevelSummary(data.low, '低风险', changes?.low),
   ];
 }
 
@@ -139,14 +140,16 @@ export function parseRows(
 
   const highCols = parseCols(data.high, changes?.high);
   const middleCols = parseCols(data.middle, changes?.middle);
+  const lowCols = parseCols(data.low, changes?.low);
 
   return {
     high: colsToRows(highCols),
     middle: colsToRows(middleCols),
+    low: colsToRows(lowCols),
   };
 }
 
-export function mergeRows({ high, middle }: ReturnType<typeof parseRows>) {
+export function mergeRows({ high, middle, low }: ReturnType<typeof parseRows>) {
   return [
     ...high.map((row, i) => [
       { value: '高风险地区', render: i === 0, rowspan: high.length },
@@ -156,14 +159,18 @@ export function mergeRows({ high, middle }: ReturnType<typeof parseRows>) {
       { value: '中风险地区', render: i === 0, rowspan: middle.length },
       ...row,
     ]),
+    ...low.map((row, i) => [
+      { value: '低风险地区', render: i === 0, rowspan: low.length },
+      ...row,
+    ]),
   ] as Cell[][];
 }
 
 export function parseExcel(
   summary: string[],
-  { high, middle }: ReturnType<typeof parseRows>
+  { high, middle, low }: ReturnType<typeof parseRows>
 ) {
-  const rows = mergeRows({ high, middle });
+  const rows = mergeRows({ high, middle, low });
 
   const workbook = new Workbook();
   workbook.creator = 'Limmio';

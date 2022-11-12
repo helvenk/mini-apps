@@ -132,6 +132,7 @@ async function fetchData() {
 
   const high = parseAreas('高风险');
   const middle = parseAreas('中风险');
+  const low = parseAreas('低风险');
   const time = response.data
     ?.find((o) => o.id === 'tm')
     ?.name.replace('数据时间：', '');
@@ -141,7 +142,7 @@ async function fetchData() {
     since: dayjs(time, 'YYYY-MM-DD HH:mm:ss').toDate().getTime(),
     high,
     middle,
-    low: [],
+    low,
   } as Covid;
 }
 

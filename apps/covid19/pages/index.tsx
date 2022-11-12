@@ -99,8 +99,8 @@ export default function Index({ raw }: { raw: RawCovids }) {
   );
 }
 
-function renderTable({ high, middle }: ReturnType<typeof parseRows>) {
-  const rows = mergeRows({ high, middle });
+function renderTable({ high, middle, low }: ReturnType<typeof parseRows>) {
+  const rows = mergeRows({ high, middle, low });
 
   const renderCell = ({
     value,
@@ -150,12 +150,16 @@ function renderChanges(changes: ReturnType<typeof parseChanges>) {
   const highRemove = groupBy(changes.high.remove, 'province');
   const middleAdd = groupBy(changes.middle.add, 'province');
   const middleRemove = groupBy(changes.middle.remove, 'province');
+  const lowAdd = groupBy(changes.low.add, 'province');
+  const lowRemove = groupBy(changes.low.remove, 'province');
 
   const provinces = uniq([
     ...Object.keys(highAdd),
     ...Object.keys(highRemove),
     ...Object.keys(middleAdd),
     ...Object.keys(middleRemove),
+    ...Object.keys(lowAdd),
+    ...Object.keys(lowRemove),
   ]);
 
   const renderCol = (className: string, areas: Area[] = []) => {
@@ -176,6 +180,7 @@ function renderChanges(changes: ReturnType<typeof parseChanges>) {
           <td style={{ width: 100 }}>省/市</td>
           <td>高风险地区</td>
           <td>中风险地区</td>
+          <td>低风险地区</td>
         </tr>
       </thead>
       <tbody>
@@ -189,6 +194,10 @@ function renderChanges(changes: ReturnType<typeof parseChanges>) {
             <td>
               {renderCol('remove', middleRemove[name])}
               {renderCol('add', middleAdd[name])}
+            </td>
+            <td>
+              {renderCol('remove', lowRemove[name])}
+              {renderCol('add', lowAdd[name])}
             </td>
           </tr>
         ))}
