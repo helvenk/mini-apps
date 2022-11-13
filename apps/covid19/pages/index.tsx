@@ -1,7 +1,7 @@
 import React, { ChangeEvent, useState, useMemo } from 'react';
 import { GetServerSideProps } from 'next';
 import dayjs from 'dayjs';
-import { groupBy, last, uniq } from 'lodash';
+import { groupBy, last, uniq, uniqBy } from 'lodash';
 import { getLatestData } from '../server/database';
 import { Area, Cell, Covid, RawCovids } from '../types';
 import {
@@ -114,7 +114,7 @@ function renderTable({ high, middle, low }: ReturnType<typeof parseRows>) {
     return (
       render && (
         <td
-          key={text}
+          key={`${level}-${text}`}
           rowSpan={rowspan}
           colSpan={colspan}
           className={fresh ? 'add' : ''}
@@ -163,7 +163,8 @@ function renderChanges(changes: ReturnType<typeof parseChanges>) {
   ]);
 
   const renderCol = (className: string, areas: Area[] = []) => {
-    return areas.map(({ region, address }) => {
+    const uniqAreas = uniqBy(areas, (o) => o.address || o.region);
+    return uniqAreas.map(({ region, address }) => {
       const addr = address || region;
       return (
         <div key={addr} className={className}>

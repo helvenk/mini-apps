@@ -2,11 +2,11 @@
 /* eslint-disable no-var */
 /* eslint-disable @typescript-eslint/no-namespace */
 import mongoose, { Schema, connect, Model } from 'mongoose';
-import { first, groupBy, differenceBy, uniqWith } from 'lodash';
-import axios from 'axios';
+import { first, differenceBy, uniqWith } from 'lodash';
 import dayjs from 'dayjs';
 import { Area, Covid, RawCovid } from '../types';
 import { compressCovid, decompressCovid } from '../utils';
+import { fetchData } from './source';
 
 const DEFAULT_COVID_SIZE = 10;
 // 数据 3天过期
@@ -58,92 +58,6 @@ export async function getDatabase() {
   }
 
   return global.database;
-}
-
-async function fetchData() {
-  type Node = {
-    id: string;
-    pid: string;
-    name: string;
-  };
-
-  const url =
-    'https://a68962b2-18d0-4812-854e-b4179d81a71f.bspapp.com/http/fengxian';
-  console.log('[%s] Fetch covid data...', new Date());
-  const response = await axios.request<Node[]>({ url });
-  console.log('[%s] Fetch success', new Date());
-  const nodeMap = groupBy(response.data, 'pId');
-  const specialProvinces = ['北京市', '天津市', '上海市', '重庆市'];
-
-  const getArea = (
-    province: string,
-    city: string,
-    region: string,
-    address = ''
-  ) => {
-    const trim = (text = '') => text.split(' -【')[0].replace('【新增】', '');
-
-    if (specialProvinces.includes(province)) {
-      return {
-        province: trim(province),
-        city: trim(province),
-        region: trim(city),
-        address: trim(region + address),
-      } as Area;
-    }
-
-    return {
-      province: trim(province),
-      city: trim(city),
-      region: trim(region),
-      address: trim(address),
-    } as Area;
-  };
-
-  const parseAreas = (id: string) => {
-    const input = nodeMap[id] ?? [];
-    const out: Area[] = [];
-
-    input.forEach((item) => {
-      const province = item.name;
-      const areas = nodeMap[item.id] ?? [];
-
-      areas.forEach((a) => {
-        const city = a.name;
-        const regions = nodeMap[a.id] ?? [];
-
-        regions.forEach((r) => {
-          const region = r.name;
-          const addresses = nodeMap[r.id] ?? [];
-
-          addresses.forEach(({ name: address }) => {
-            out.push(getArea(province, city, region, address));
-          });
-
-          if (addresses.length === 0) {
-            out.push(getArea(province, city, region));
-          }
-        });
-      });
-    });
-
-    return out;
-  };
-
-  const high = parseAreas('高风险');
-  const middle = parseAreas('中风险');
-  const low = parseAreas('低风险');
-  const time = response.data
-    ?.find((o) => o.id === 'tm')
-    ?.name.replace('数据时间：', '');
-
-  return {
-    create: Date.now(),
-    since: dayjs(time, 'YYYY-MM-DD HH:mm:ss').toDate().getTime(),
-    high,
-    middle,
-    low,
-  } as Covid;
 }
 
 async function getData(size: number) {
@@ -203,13 +117,13 @@ export async function getLatestData(size: number = DEFAULT_COVID_SIZE) {
   // eslint-disable-next-line prefer-const
   let [results, latestData] = await Promise.all([getData(size), fetchData()]);
 
-  if (
-    // insert new data only prod
-    process.env.NODE_ENV.startsWith('prod') &&
-    !isEqualCovid(first(results), latestData)
-  ) {
+  if (!isEqualCovid(first(results), latestData)) {
     console.log('[%s] Found new data...', new Date());
-    await saveData(latestData);
+    // insert new data only prod
+    if (process.env.NODE_ENV.startsWith('prod')) {
+      await saveData(latestData);
+    }
+
     results = [latestData, ...results];
   }
 
