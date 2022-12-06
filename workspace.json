@@ -3,6 +3,7 @@
   "version": 2,
   "projects": {
     "attendance": "apps/attendance",
+    "book": "apps/book",
     "covid19": "apps/covid19"
   }
 }
