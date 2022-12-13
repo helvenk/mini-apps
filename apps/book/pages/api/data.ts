@@ -39,7 +39,11 @@ async function fetchBooks(page: number) {
 
   return $('#ulist li > a')
     .map((_, el) => {
-      const id = $(el).attr('href').replace('/txt/', '').replace('.html', '');
+      const id = $(el)
+        .attr('href')
+        .replace('/txt/', '')
+        .replace('http://m.qishula.com/book/', '')
+        .replace('.html', '');
       const image = $(el).find('img').attr('src');
       const title = $(el).find('p').eq(0).text();
       const author = $(el).find('p').eq(1).text();
@@ -61,7 +65,7 @@ async function fetchBooks(page: number) {
 }
 
 async function fetchBook(id: string) {
-  const url = `http://m.qishula.com/txt/${id}.html`;
+  const url = `http://m.qishula.com/book/${id}.html`;
   const { data } = await axios.request({
     url,
     responseType: 'arraybuffer',
