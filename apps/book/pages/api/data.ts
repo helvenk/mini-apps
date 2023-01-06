@@ -122,7 +122,7 @@ export default async function handler(
 
         res.setHeader(
           'Content-disposition',
-          `attachment; filename=${encodeURIComponent(download)}`
+          `attachment; filename=${download}`
         );
         return response.data.pipe(res);
       }
